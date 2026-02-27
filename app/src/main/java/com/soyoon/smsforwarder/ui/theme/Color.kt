@@ -1,4 +1,4 @@
-package com.example.smsforwarder.ui.theme
+package com.soyoon.smsforwarder.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

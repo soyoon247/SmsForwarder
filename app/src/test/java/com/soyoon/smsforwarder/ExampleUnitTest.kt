@@ -1,4 +1,4 @@
-package com.example.smsforwarder
+package com.soyoon.smsforwarder
 
 import org.junit.Test
 

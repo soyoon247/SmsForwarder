@@ -1,4 +1,4 @@
-package com.example.smsforwarder.ui.theme
+package com.soyoon.smsforwarder.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

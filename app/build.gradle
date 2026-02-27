@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.smsforwarder'
+    namespace 'com.soyoon.smsforwarder'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.example.smsforwarder"
+        applicationId "com.soyoon.smsforwarder"
         minSdk 26
         targetSdk 35
         versionCode 1
