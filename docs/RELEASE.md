@@ -105,3 +105,107 @@ export KEY_PASSWORD=your_key_password
 | Git 태그 | `v{versionName}` | `v1.42` |
 
 메이저 버전(`1.x`)을 올리려면 워크플로우의 `VERSION_NAME` 형식을 수정합니다.
+
+---
+
+## Public 레포에 자동 배포 (Private → Public)
+
+### 개요
+
+개발 히스토리는 private 레포에만 유지하고, 태그를 push할 때 GitHub Actions가 자동으로 public 레포에 소스코드를 배포합니다.
+Private 레포의 커밋 수십 개가 public 레포에는 단일 커밋(`v1.x.x release`)으로만 노출되어 개발 내역이 공개되지 않습니다.
+
+```
+v* 태그 push (private 레포)
+         ↓
+GitHub Actions 실행 (.github/workflows/publish.yml)
+         ↓
+squash merge → 단일 커밋으로 정리
+         ↓
+public 레포 main 브랜치에 push
+```
+
+> APK 빌드 워크플로우(`release.yml`)와 동일한 태그 트리거를 사용하므로, 태그 하나로 APK 빌드와 소스 배포가 동시에 실행됩니다.
+
+---
+
+### 최초 설정 (한 번만)
+
+#### 1. Personal Access Token(PAT) 생성
+
+Public 레포에 push할 권한을 가진 PAT을 발급합니다.
+
+1. GitHub → **Settings → Developer settings → Personal access tokens → Tokens (classic)**
+2. **Generate new token (classic)** 클릭
+3. 권한(Scope) 선택: `repo` (또는 Fine-grained token의 경우 public 레포에 대한 `Contents: Read and write`)
+4. 생성된 토큰 값을 복사해 안전하게 보관
+
+#### 2. Private 레포 Secrets에 토큰 등록
+
+Private 레포(현재 작업 중인 이 레포) → **Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret 이름 | 설명 |
+|------------|------|
+| `PUBLIC_REPO_TOKEN` | 위에서 생성한 PAT 값 |
+
+#### 3. Public 레포 URL 확인
+
+배포 대상 public 레포의 HTTPS URL을 확인합니다. 예: `https://github.com/soyoon247/SmsForwarder-public.git`
+
+---
+
+### 워크플로우 파일
+
+Private 레포에 아래 파일을 생성합니다: `.github/workflows/publish.yml`
+
+```yaml
+name: Publish to public repo
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to public repo
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git remote add public https://x-access-token:${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/soyoon247/SmsForwarder-public.git
+          git checkout -b release
+          git merge --squash main
+          git commit -m "${{ github.ref_name }} release"
+          git push public release:main --force
+```
+
+> `soyoon247/SmsForwarder-public.git` 부분을 실제 public 레포 경로로 교체하세요.
+
+---
+
+### 사용 방법
+
+태그를 push하면 나머지는 자동입니다.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+이 한 줄로:
+- `release.yml`: 서명된 APK 빌드 후 GitHub Releases 업로드
+- `publish.yml`: Squash commit으로 정리 후 public 레포 main에 push
+
+---
+
+### 주의사항
+
+- Public 레포 main 브랜치에는 항상 `--force` push 됩니다. Public 레포에서 직접 작업한 내용이 있으면 덮어씌워집니다.
+- Public 레포의 커밋 히스토리는 `v1.x.x release` 단일 커밋만 남습니다. Private 레포의 세부 커밋은 공개되지 않습니다.
+- PAT이 만료되거나 권한이 변경되면 워크플로우가 실패합니다. 주기적으로 토큰 유효기간을 확인하세요.
