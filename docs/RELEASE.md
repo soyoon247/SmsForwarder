@@ -2,21 +2,21 @@
 
 ## 개요
 
-main 브랜치에 코드가 머지되면 GitHub Actions가 자동으로 APK를 빌드하고 GitHub Releases에 배포합니다.
+private 레포(이 레포)에서 개발하고, 태그를 push하면 GitHub Actions가 자동으로 APK를 빌드한 뒤 public 레포에 소스코드와 Release를 배포합니다.
+개발 히스토리는 private 레포에만 남고, public 레포에는 단일 squash 커밋만 노출됩니다.
 
 ## 자동 배포 흐름
 
 ```
-main 브랜치에 push/merge
+v* 태그 push (private 레포)
          ↓
 GitHub Actions 실행 (.github/workflows/release.yml)
          ↓
-versionCode = GITHUB_RUN_NUMBER (자동 증가 정수)
-versionName = "1.{RUN_NUMBER}"
-         ↓
 서명된 Release APK 빌드
          ↓
-GitHub Releases에 태그(v1.X) 및 APK 자동 업로드
+소스코드 squash → public 레포 main 브랜치에 push
+         ↓
+APK를 public 레포 GitHub Releases에 업로드
 ```
 
 ---
@@ -64,6 +64,9 @@ GitHub 저장소 → **Settings → Secrets and variables → Actions → New re
 | `STORE_PASSWORD` | 키스토어 비밀번호 | `mypassword` |
 | `KEY_ALIAS` | 키 별칭 | `smsforwarder` |
 | `KEY_PASSWORD` | 키 비밀번호 | `mypassword` |
+| `PUBLIC_REPO_TOKEN` | Public 레포에 push/release 권한이 있는 PAT | `ghp_...` |
+
+`PUBLIC_REPO_TOKEN` 발급 방법: GitHub → **Settings → Developer settings → Personal access tokens → Tokens (classic)** → `repo` scope 선택
 
 ---
 
@@ -110,102 +113,27 @@ export KEY_PASSWORD=your_key_password
 
 ## Public 레포에 자동 배포 (Private → Public)
 
-### 개요
+APK 빌드와 public 레포 배포는 `release.yml` 하나로 통합되어 있습니다.
+태그를 push하면 아래가 순서대로 실행됩니다.
 
-개발 히스토리는 private 레포에만 유지하고, 태그를 push할 때 GitHub Actions가 자동으로 public 레포에 소스코드를 배포합니다.
-Private 레포의 커밋 수십 개가 public 레포에는 단일 커밋(`v1.x.x release`)으로만 노출되어 개발 내역이 공개되지 않습니다.
+1. APK 빌드 (키스토어는 private 레포 Secrets 사용)
+2. 소스코드 squash → public 레포 main에 push (개발 히스토리 비공개)
+3. APK를 public 레포 GitHub Releases에 업로드
 
-```
-v* 태그 push (private 레포)
-         ↓
-GitHub Actions 실행 (.github/workflows/publish.yml)
-         ↓
-squash merge → 단일 커밋으로 정리
-         ↓
-public 레포 main 브랜치에 push
-```
+### Public 레포 경로 변경
 
-> APK 빌드 워크플로우(`release.yml`)와 동일한 태그 트리거를 사용하므로, 태그 하나로 APK 빌드와 소스 배포가 동시에 실행됩니다.
-
----
-
-### 최초 설정 (한 번만)
-
-#### 1. Personal Access Token(PAT) 생성
-
-Public 레포에 push할 권한을 가진 PAT을 발급합니다.
-
-1. GitHub → **Settings → Developer settings → Personal access tokens → Tokens (classic)**
-2. **Generate new token (classic)** 클릭
-3. 권한(Scope) 선택: `repo` (또는 Fine-grained token의 경우 public 레포에 대한 `Contents: Read and write`)
-4. 생성된 토큰 값을 복사해 안전하게 보관
-
-#### 2. Private 레포 Secrets에 토큰 등록
-
-Private 레포(현재 작업 중인 이 레포) → **Settings → Secrets and variables → Actions → New repository secret**
-
-| Secret 이름 | 설명 |
-|------------|------|
-| `PUBLIC_REPO_TOKEN` | 위에서 생성한 PAT 값 |
-
-#### 3. Public 레포 URL 확인
-
-배포 대상 public 레포의 HTTPS URL을 확인합니다. 예: `https://github.com/soyoon247/SmsForwarder-public.git`
-
----
-
-### 워크플로우 파일
-
-Private 레포에 아래 파일을 생성합니다: `.github/workflows/publish.yml`
+`release.yml`에서 `soyoon247/SmsForwarder-public` 두 곳을 실제 public 레포 경로로 교체합니다.
 
 ```yaml
-name: Publish to public repo
+# Push source to public repo
+git remote add public https://...@github.com/soyoon247/SmsForwarder-public.git  # ← 교체
 
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Push to public repo
-        run: |
-          git config user.email "actions@github.com"
-          git config user.name "GitHub Actions"
-          git remote add public https://x-access-token:${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/soyoon247/SmsForwarder-public.git
-          git checkout -b release
-          git merge --squash main
-          git commit -m "${{ github.ref_name }} release"
-          git push public release:main --force
+# Create GitHub Release
+repository: soyoon247/SmsForwarder-public  # ← 교체
 ```
-
-> `soyoon247/SmsForwarder-public.git` 부분을 실제 public 레포 경로로 교체하세요.
-
----
-
-### 사용 방법
-
-태그를 push하면 나머지는 자동입니다.
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-이 한 줄로:
-- `release.yml`: 서명된 APK 빌드 후 GitHub Releases 업로드
-- `publish.yml`: Squash commit으로 정리 후 public 레포 main에 push
-
----
 
 ### 주의사항
 
 - Public 레포 main 브랜치에는 항상 `--force` push 됩니다. Public 레포에서 직접 작업한 내용이 있으면 덮어씌워집니다.
 - Public 레포의 커밋 히스토리는 `v1.x.x release` 단일 커밋만 남습니다. Private 레포의 세부 커밋은 공개되지 않습니다.
-- PAT이 만료되거나 권한이 변경되면 워크플로우가 실패합니다. 주기적으로 토큰 유효기간을 확인하세요.
+- `PUBLIC_REPO_TOKEN`이 만료되거나 권한이 변경되면 워크플로우가 실패합니다. 주기적으로 토큰 유효기간을 확인하세요.

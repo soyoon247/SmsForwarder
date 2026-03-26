@@ -59,9 +59,22 @@ jobs:
           mv app/build/outputs/apk/release/app-release.apk \
              app/build/outputs/apk/release/SmsForwarder-${{ steps.version.outputs.version_name }}.apk
 
+      - name: Push source to public repo
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git remote add public https://x-access-token:${{ secrets.PUBLIC_REPO_TOKEN }}@github.com/soyoon247/SmsForwarder-public.git
+          git checkout -b release
+          git merge --squash main
+          git commit -m "${{ github.ref_name }} release"
+          git push public release:main --force
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          repository: soyoon247/SmsForwarder-public
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          tag_name: ${{ github.ref_name }}
           name: "SmsForwarder ${{ steps.version.outputs.version_name }}"
           body: |
             ## 설치 방법
