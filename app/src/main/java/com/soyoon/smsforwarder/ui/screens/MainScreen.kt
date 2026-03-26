@@ -1,5 +1,6 @@
 package com.soyoon.smsforwarder.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -29,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.soyoon.smsforwarder.model.ForwardLog
 import com.soyoon.smsforwarder.model.ForwardRule
@@ -49,12 +52,13 @@ fun MainScreen(repository: SettingsRepository) {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
             Text(
-                text = "SMS 자동 전달",
+                text = "SMS Forwarder",
                 style = MaterialTheme.typography.headlineMedium
             )
         }
@@ -147,19 +151,84 @@ fun MainScreen(repository: SettingsRepository) {
 
 @Composable
 private fun NoticeSection() {
+    var expanded by remember { mutableStateOf(false) }
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = "일부 기기에서 SMS 수신이 제한될 수 있습니다. " +
-                "정상 동작하지 않을 경우 배터리 최적화를 해제하거나, " +
-                "설정에서 기본 SMS 앱을 변경해주세요.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(12.dp)
-        )
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "일부 기기에서 SMS 수신이 제한될 수 있습니다. 정상 동작을 위해 설정을 변경해주세요.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            TextButton(
+                onClick = { expanded = !expanded },
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Text(
+                    text = if (expanded) "▼ 접기" else "▶ 상세 설정 보기",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // 한국어 안내
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "한국어",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "1. 배터리 최적화 해제\n" +
+                                "   설정 → 앱 → 해당 앱 → 배터리 → \"제한 없음\" 선택",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "2. 사용하지 않는 앱 관리 해제\n" +
+                                "   설정 → 앱 → 해당 앱 → \"사용하지 않는 앱 관리\" 토글 끄기",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "3. 자동 절전 예외 앱 등록\n" +
+                                "   설정 → 배터리 → 백그라운드 앱 사용 제한 → \"자동 절전 예외 앱\"에 추가",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    HorizontalDivider()
+                    // English guide
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "English",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "1. Disable Battery Optimization\n" +
+                                "   Settings → Apps → Select the app → Battery → Choose \"Unrestricted\"",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "2. Disable Manage app if unused\n" +
+                                "   Settings → Apps → Select the app → Turn off \"Remove permissions if app is unused\"",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "3. Add to Never auto sleeping apps\n" +
+                                "   Settings → Battery → Background usage limits → Add the app to \"Never auto sleeping apps\"",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
