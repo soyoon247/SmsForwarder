@@ -29,15 +29,21 @@ GitHub Releases에 태그(v1.X) 및 APK 자동 업로드
 
 ```bash
 keytool -genkey -v -keystore release.keystore \
-  -alias smsforwarder -keyalg RSA -keysize 2048 -validity 10000
+  -alias smsforwarder -keyalg RSA -keysize 2048 -validity 10000 \
+  -storetype PKCS12
 ```
+
+> `-storetype PKCS12` 옵션으로 표준 포맷을 사용합니다. JKS 포맷 경고가 나오지 않습니다.
 
 > 생성 시 입력한 비밀번호와 alias를 반드시 기록해두세요.
 
 키스토어를 base64로 인코딩합니다.
 
 ```bash
-# macOS / Linux
+# macOS
+base64 -i release.keystore | tr -d '\n'
+
+# Linux (GNU)
 base64 -w 0 release.keystore
 
 # Windows (PowerShell)
